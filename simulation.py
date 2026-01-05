@@ -1,11 +1,12 @@
-# simulation.py
 import time
 import numpy as np
 import matplotlib
-matplotlib.use('QtAgg')  # Usar backend compatible con Qt
+matplotlib.use("QtAgg")
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
+
 import sounddevice as sd
+import soundfile as sf  # obligatorio para PyInstaller
 
 from modelo import String
 from modal import (
@@ -44,7 +45,7 @@ def run_simulation(
     alpha=0.0,
     d0=0.1,
     modes=60,
-    audio_duration=5.0,
+    audio_duration=60.0,
     fs=44100,
     fps=30,
     init_kind="triangular"
@@ -56,33 +57,54 @@ def run_simulation(
 
     dx = x[1] - x[0]
     dt = min(0.5 * dx / c, 0.99 * dx / c)
-    print(f"dt = {dt}, alpha = {alpha}")
 
-    # ---------------- AUDIO ----------------
+    # -------- AUDIO --------
     x_fine = np.linspace(0, L, 4000)
     y_fine = np.interp(x_fine, x, y)
     B = compute_modal_coefficients_from_samples(x_fine, y_fine, L, modes)
-    signal = generate_modal_sound(B, L, c, audio_duration, fs, x0=x0_audio, alpha=alpha)
 
-    # Generar audio más largo para que no se corte antes de cerrar la ventana
-    max_duration = 60.0  # Duración máxima de 60 segundos
-    signal_long = generate_modal_sound(B, L, c, max_duration, fs, x0=x0_audio, alpha=alpha)
-    
-    sd.play(signal_long, fs)
+    signal = generate_modal_sound(
+        B, L, c, audio_duration, fs, x0=x0_audio, alpha=alpha
+    ).astype(np.float32)
 
-    # ---------------- ANIMACIÓN ----------------
-    plt.ion()  # Activar modo interactivo
+    # Reproducir audio mediante un stream para evitar cortes (mantener referencia)
+    sd.default.samplerate = fs
+    sd.default.channels = 1
+
+    play_idx = {"i": 0}
+
+    # Callback que reproduce el buffer una sola vez
+    def audio_callback(outdata, frames, time_info, status):
+        if status:
+            print(status)
+        i = play_idx["i"]
+        chunk = signal[i:i + frames]
+        if len(chunk) < frames:
+            outdata[:len(chunk), 0] = chunk
+            outdata[len(chunk):, 0] = 0
+            play_idx["i"] = len(signal)
+            raise sd.CallbackStop
+        outdata[:, 0] = chunk
+        play_idx["i"] += frames
+
+    audio_stream = sd.OutputStream(
+        samplerate=fs,
+        channels=1,
+        dtype="float32",
+        callback=audio_callback
+    )
+    audio_stream.start()
+
+    # -------- ANIMACIÓN --------
     fig, ax = plt.subplots(figsize=(12, 4))
     line, = ax.plot(x, y)
     ax.axhline(0, color="black", alpha=0.3)
     ax.set_xlim([0, L])
-    ax.set_ylim([-1.2*d0, 1.2*d0])
-    ax.set_xlabel("x")
-    ax.set_ylabel("desplazamiento")
+    ax.set_ylim([-1.2 * d0, 1.2 * d0])
 
     t_prev = time.time()
 
-    def update(frame):
+    def update(_):
         nonlocal t_prev
         now = time.time()
         steps = int((now - t_prev) / dt)
@@ -92,19 +114,28 @@ def run_simulation(
         line.set_ydata(string.y[1:-1])
         return line,
 
-    ani = FuncAnimation(
+    # Guardar la animación en una variable para evitar que el GC la destruya
+    anim = FuncAnimation(
         fig,
         update,
-        frames=100000,
         interval=1000 / fps,
-        blit=False
+        blit=False,
+        cache_frame_data=False  # evitar warning de cache y uso de memoria
     )
 
+    # Asociar la animación y el stream de audio a la figura para garantizar su ciclo de vida
+    fig._anim = anim
+    fig._audio_stream = audio_stream
+
+    # Mostrar sin lanzar un nuevo bucle de eventos de Qt (ya está corriendo)
     plt.show(block=False)
-    
-    # Mantener la ventana abierta hasta que el usuario la cierre
-    try:
-        while plt.fignum_exists(fig.number):
-            plt.pause(0.1)
-    finally:
-        sd.stop()  # Detener el audio cuando se cierre la ventana
+
+    # Mantener la ventana y el audio hasta que se cierre la figura
+    while plt.fignum_exists(fig.number):
+        plt.pause(0.05)
+        if not audio_stream.active:
+            break
+
+    # Si el stream sigue activo al cerrar la ventana, detenerlo
+    if audio_stream.active:
+        audio_stream.stop()

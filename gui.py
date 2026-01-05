@@ -1,11 +1,10 @@
-# gui.py
 import sys
 from PySide6.QtWidgets import (
     QApplication, QWidget,
     QVBoxLayout, QLabel, QPushButton,
-    QComboBox, QDoubleSpinBox, QGroupBox
+    QComboBox, QDoubleSpinBox, QGroupBox,
+    QMessageBox
 )
-from PySide6.QtCore import QTimer
 
 from simulation import run_simulation
 
@@ -19,24 +18,8 @@ class ControlWindow(QWidget):
 
         layout = QVBoxLayout(self)
 
-        # -------- Condición inicial --------
-        group_init = QGroupBox("Condición inicial")
-        layout_init = QVBoxLayout()
-
         self.init_combo = QComboBox()
-        self.init_combo.addItems([
-            "triangular",
-            "fundamental",
-            "harmonic"
-        ])
-
-        layout_init.addWidget(QLabel("Tipo"))
-        layout_init.addWidget(self.init_combo)
-        group_init.setLayout(layout_init)
-
-        # -------- Parámetros físicos --------
-        group_params = QGroupBox("Parámetros físicos")
-        layout_params = QVBoxLayout()
+        self.init_combo.addItems(["triangular", "fundamental", "harmonic"])
 
         self.L_spin = QDoubleSpinBox()
         self.L_spin.setRange(1.0, 100.0)
@@ -50,21 +33,17 @@ class ControlWindow(QWidget):
         self.alpha_spin.setRange(0.0, 50.0)
         self.alpha_spin.setValue(0.0)
 
-        layout_params.addWidget(QLabel("Longitud L"))
-        layout_params.addWidget(self.L_spin)
-        layout_params.addWidget(QLabel("Velocidad c"))
-        layout_params.addWidget(self.c_spin)
-        layout_params.addWidget(QLabel("Amortiguamiento α"))
-        layout_params.addWidget(self.alpha_spin)
-
-        group_params.setLayout(layout_params)
-
-        # -------- Botón --------
         self.run_button = QPushButton("▶ Ejecutar simulación")
         self.run_button.clicked.connect(self.run_clicked)
 
-        layout.addWidget(group_init)
-        layout.addWidget(group_params)
+        layout.addWidget(QLabel("Condición inicial"))
+        layout.addWidget(self.init_combo)
+        layout.addWidget(QLabel("Longitud L"))
+        layout.addWidget(self.L_spin)
+        layout.addWidget(QLabel("Velocidad c"))
+        layout.addWidget(self.c_spin)
+        layout.addWidget(QLabel("Amortiguamiento α"))
+        layout.addWidget(self.alpha_spin)
         layout.addStretch()
         layout.addWidget(self.run_button)
 
@@ -78,12 +57,10 @@ class ControlWindow(QWidget):
             "init_kind": self.init_combo.currentText()
         }
 
-        # Ejecutar en el hilo principal con un pequeño delay
-        QTimer.singleShot(100, lambda: self.start_simulation(params))
-
-    def start_simulation(self, params):
         try:
             run_simulation(**params)
+        except Exception as exc:  # Show the error so bundled EXE failures are visible
+            QMessageBox.critical(self, "Error al simular", f"Ocurrió un error:\n{exc}")
         finally:
             self.run_button.setEnabled(True)
 
