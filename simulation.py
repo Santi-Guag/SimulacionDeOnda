@@ -2,7 +2,7 @@
 import time
 import numpy as np
 import matplotlib
-matplotlib.use('Qt5Agg')  # Usar backend compatible con Qt
+matplotlib.use('QtAgg')  # Usar backend compatible con Qt
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 import sounddevice as sd
