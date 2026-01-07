@@ -3,7 +3,6 @@ import numpy as np
 
 
 def safe_trapz(y, x):
-    """Integración trapezoidal robusta para entornos donde np.trapz no está disponible."""
     trapz_fn = getattr(np, "trapz", None)
     if trapz_fn is not None:
         return trapz_fn(y, x)
@@ -32,7 +31,6 @@ def generate_modal_sound(B, L, c, duration, fs, x0=None, alpha=0.0):
         spatial = np.sin(n * np.pi * x0 / L)
         signal += B[n] * spatial * np.cos(omega * t)
 
-    # Aplicar amortiguamiento exponencial
     if alpha > 0:
         damping = np.exp(-alpha * t)
         signal *= damping
