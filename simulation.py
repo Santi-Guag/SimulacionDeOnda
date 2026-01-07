@@ -15,7 +15,7 @@ from modal import (
 )
 
 
-def create_initial_condition(kind, x, L, d0):
+def create_initial_condition(kind, x, L, d0, custom_equation=None):
     if kind == "triangular":
         d0_loc = 0.8
         y = np.empty_like(x)
@@ -31,9 +31,68 @@ def create_initial_condition(kind, x, L, d0):
     elif kind == "harmonic":
         y = d0 * np.sin(2 * np.pi * x / L)
         x0_audio = 0.25 * L
+    
+    elif kind == "personalizado":
+        if custom_equation is None:
+            raise ValueError("Se requiere una ecuación personalizada")
+        
+        try:
+            # Crear namespace seguro con funciones matemáticas disponibles
+            namespace = {
+                'x': x,
+                'L': L,
+                'd0': d0,
+                'sin': np.sin,
+                'cos': np.cos,
+                'tan': np.tan,
+                'exp': np.exp,
+                'sqrt': np.sqrt,
+                'abs': np.abs,
+                'pi': np.pi,
+                'e': np.e,
+                'log': np.log,
+                'log10': np.log10,
+                'sinh': np.sinh,
+                'cosh': np.cosh,
+                'tanh': np.tanh,
+            }
+            
+            # Evaluar la ecuación personalizada
+            y = eval(custom_equation, {"__builtins__": {}}, namespace)
+            
+            # Validar que sea array o número
+            if isinstance(y, (int, float)):
+                raise ValueError("La ecuación debe devolver un array o valores para cada x")
+            
+            y = np.asarray(y)
+            
+            # Validar dimensiones
+            if y.shape != x.shape:
+                raise ValueError(f"La ecuación generó un array de tamaño {y.shape[0]}, se esperaba {x.shape[0]}")
+            
+            # Validar que sea numérico
+            if not np.issubdtype(y.dtype, np.number):
+                raise ValueError("La ecuación debe devolver valores numéricos")
+            
+            # Validar que no haya NaN o Inf
+            if np.any(np.isnan(y)) or np.any(np.isinf(y)):
+                raise ValueError("La ecuación produjo valores NaN o infinito")
+            
+            x0_audio = 0.5 * L  # Default para ecuaciones personalizadas
+            
+        except SyntaxError as e:
+            raise ValueError(f"Error de sintaxis en la ecuación: {e}")
+        except NameError as e:
+            raise ValueError(f"Variable no reconocida: {e}. Variables disponibles: x, L, d0")
+        except TypeError as e:
+            raise ValueError(f"Error de tipo en la ecuación: {e}")
+        except ZeroDivisionError:
+            raise ValueError("División por cero en la ecuación")
+        except Exception as e:
+            raise ValueError(f"Error al evaluar la ecuación: {e}")
 
     else:
-        raise ValueError("Condición inicial no válida")
+        raise ValueError(f"Condición inicial no válida: {kind}")
 
     return y, x0_audio
 
@@ -48,10 +107,11 @@ def run_simulation(
     audio_duration=60.0,
     fs=44100,
     fps=30,
-    init_kind="triangular"
+    init_kind="triangular",
+    custom_equation=None
 ):
     x = np.linspace(0, L, N)
-    y, x0_audio = create_initial_condition(init_kind, x, L, d0)
+    y, x0_audio = create_initial_condition(init_kind, x, L, d0, custom_equation=custom_equation)
 
     string = String(x, y, c, alpha=alpha)
 
