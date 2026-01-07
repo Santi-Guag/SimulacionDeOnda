@@ -1,113 +1,138 @@
-# Ecuaciones Personalizadas - Guía de Uso
+# Ecuaciones Personalizadas – Guía de Uso
 
-La funcionalidad de ecuaciones personalizadas permite escribir cualquier condición inicial para la simulación de la onda 1D.
+La funcionalidad de **ecuaciones personalizadas** permite al usuario definir libremente la **condición inicial de desplazamiento** de la cuerda para la simulación de la ecuación de onda 1D.
+
+Esto posibilita experimentar con distintos perfiles iniciales y analizar su evolución temporal, así como su impacto en el sonido generado por la simulación.
+
+---
 
 ## Cómo usar
 
-1. En la interfaz gráfica, selecciona **"personalizado"** en el dropdown de "Condición inicial"
-2. Aparecerá un campo de texto donde puedes escribir tu ecuación
-3. La ecuación debe estar expresada en función de `x` (posición)
-4. Presiona **"Ejecutar simulación"**
+1. En la interfaz gráfica, selecciona **"Personalizado"** en el desplegable de **Condición inicial**.
+2. Aparecerá un campo de texto editable.
+3. Escribe una ecuación en función de `x`.
+4. Presiona **"Ejecutar simulación"**.
+
+---
 
 ## Variables disponibles
 
-- `x`: Posición (array de 0 a L)
-- `L`: Longitud de la cuerda (parámetro que estableces)
-- `d0`: Amplitud inicial (0.1 por defecto)
+- `x`: Posición espacial (array desde `0` hasta `L`)
+- `L`: Longitud total de la cuerda
+- `d0`: Amplitud inicial (valor por defecto: `0.1`)
+
+---
 
 ## Funciones matemáticas disponibles
 
-- **Trigonométricas**: `sin()`, `cos()`, `tan()`, `sinh()`, `cosh()`, `tanh()`
-- **Exponencial y logaritmo**: `exp()`, `log()`, `log10()`
-- **Otras**: `sqrt()`, `abs()`
-- **Constantes**: `pi`, `e`
+- **Trigonométricas**:  
+  `sin()`, `cos()`, `tan()`, `sinh()`, `cosh()`, `tanh()`
+
+- **Exponenciales y logarítmicas**:  
+  `exp()`, `log()`, `log10()`
+
+- **Otras**:  
+  `sqrt()`, `abs()`
+
+- **Constantes**:  
+  `pi`, `e`
+
+---
 
 ## Ejemplos de ecuaciones
 
-### 1. Onda triangular (equivalente a opción predefinida)
-```
-d0 * (1 - 2 * abs(x/L - 0.5))
-```
+### 🔹 Modos propios (soluciones analíticas)
 
-### 2. Gaussiana (campana)
-```
+#### 1. Modo fundamental (n = 1)
+d0 * sin(pi * x / L)
+
+#### 2. Segundo modo (n = 2)
+d0 * sin(2 * pi * x / L)
+
+#### 3. Tercer modo (n = 3)
+d0 * sin(3 * pi * x / L)
+
+#### 4. Superposición de modos
+d0 * (sin(pix/L) + 0.5sin(2pix/L))
+
+---
+
+### 🔹 Excitaciones localizadas (pulsos)
+
+#### 5. Pulso gaussiano centrado
 d0 * exp(-(x - L/2)**2 / (0.1*L)**2)
-```
 
-### 3. Cuadrada (step function)
-```
-d0 * (abs(x - L/2) < L/4)
-```
+#### 6. Pulso gaussiano desplazado
+d0 * exp(-20 * (x - 0.7*L)2 / L2)
 
-### 4. Seno doble amplitud en el centro
-```
-d0 * sin(pi*x/L) * (1 + sin(4*pi*x/L))
-```
+#### 7. Pulso estrecho (impacto tipo martillo)
+d0 * exp(-100 * (x - L/2)2 / L2)
 
+---
 
-### 6. Exponencial decreciente
-```
-d0 * exp(-2*x/L)
-```
+### 🔹 Formas geométricas simples
 
-### 7. Arco parabólico
-```
+#### 8. Onda triangular (cuerda punteada)
+d0 * (1 - 2 * abs(x/L - 0.5))
+
+#### 9. Arco parabólico
 d0 * (1 - (2*x/L - 1)**2)
-```
 
-### 8. Rampa
-```
-d0 * x/L
-```
+#### 10. Rampa lineal
+d0 * x / L
 
-### 9. Coseno modulado
-```
-d0 * cos(pi*x/L) * exp(-3*x/L)
-```
+---
 
-### 10. Pulso en el centro
-```
-d0 * exp(-100*(x - L/2)**2 / L**2)
-```
+### 🔹 Excitaciones no suaves (experimentales)
 
-## Validaciones automáticas
+#### 11. Función escalón
+d0 * (abs(x - L/2) < L/4)
 
-El sistema automáticamente valida:
+---
 
-- ✅ **Sintaxis correcta**: Se detectan errores de escritura
-- ✅ **Variables válidas**: Solo acepta x, L, d0 y funciones definidas
-- ✅ **Resultados numéricos**: Rechaza NaN e infinito
-- ✅ **Dimensiones correctas**: El array debe tener mismo tamaño que x
-- ✅ **División por cero**: Se detectan divisiones imposibles
+### 🔹 Ondas moduladas
+
+#### 12. Seno modulado en amplitud
+d0 * sin(pix/L) * (1 + sin(4pi*x/L))
+
+#### 13. Coseno amortiguado (oscilatorio)
+d0 * cos(4pix/L) * exp(-3*x/L)
+#### 14. Onda localizada oscilante
+d0 * sin(6pix/L) * exp(-10*(x - L/2)2 / L2)
+
+---
+
+## ✅ Validaciones automáticas
+
+El sistema valida automáticamente:
+
+- ✅ Sintaxis correcta
+- ✅ Uso exclusivo de variables permitidas
+- ✅ Resultados numéricos finitos
+- ✅ Dimensión correcta del array
+- ✅ Prevención de divisiones por cero
+
+---
 
 ## Mensajes de error comunes
 
 | Error | Causa | Solución |
-|-------|-------|----------|
-| "Error de sintaxis" | Falta paréntesis o símbolo incorrecto | Revisa la ecuación |
-| "Variable no reconocida" | Usaste variable que no existe | Solo usa x, L, d0 |
-| "División por cero" | Divides por 0 | Agrega condiciones (ej: `1/(x+0.01)`) |
-| "Valores NaN o infinito" | Operación inválida (ej: sqrt de negativo) | Usa funciones que eviten valores inválidos |
-| "Array de tamaño incorrecto" | La ecuación retorna un valor único | Asegúrate de que la ecuación sea vectorial |
+|------|------|---------|
+| Error de sintaxis | Paréntesis o símbolos incorrectos | Revisa la ecuación |
+| Variable no reconocida | Variable inexistente | Usa solo `x`, `L`, `d0` |
+| División por cero | Denominador nulo | Usa `x + ε` |
+| Valores NaN o infinito | Operación inválida | Ajusta la función |
+| Tamaño incorrecto | No es vectorial | Usa operaciones con `x` |
 
-## Consejos
+---
 
-1. **Prueba ecuaciones simples primero**: Empieza con `sin(pi*x/L)` antes de ecuaciones complejas
-2. **Usa paréntesis**: Para evitar ambigüedades, ej: `d0 * (1 - x/L)` en lugar de `d0 * 1 - x/L`
-3. **Evita división por x**: Si necesitas, usa `x + epsilon` para evitar división por cero
-4. **Amplitudes razonables**: Mantén los valores entre -1 y 1 para una simulación estable
-5. **Ecuaciones simétricas son bonitas**: Producen animaciones más interesantes
+## Consejos de uso
 
-## Ejemplo completo de uso
+1. Empieza con ecuaciones simples.
+2. Usa paréntesis explícitos.
+3. Evita divisiones directas por `x`.
+4. Mantén amplitudes moderadas (`|y| < 1`).
+5. Las funciones suaves producen animaciones y sonido más estables.
+6. Los modos propios generan sonidos más puros.
 
-Si quieres una onda que parece una campana descentrada hacia la derecha:
 
-```
-d0 * exp(-20 * (x - 0.7*L)**2 / L**2)
-```
-
-Entonces:
-1. Selecciona "personalizado" en el dropdown
-2. Escribe: `d0 * exp(-20 * (x - 0.7*L)**2 / L**2)`
-3. Ajusta L, c, α según prefieras
-4. ¡Ejecuta!
