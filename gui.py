@@ -93,9 +93,9 @@ class ControlWindow(QWidget):
 
         try:
             run_simulation(**params)
-        except ValueError as exc:  # Errores de validación de ecuación
+        except ValueError as exc:  
             QMessageBox.warning(self, "Ecuación inválida", f"Error en la ecuación:\n{exc}")
-        except Exception as exc:  # Show the error so bundled EXE failures are visible
+        except Exception as exc:  
             QMessageBox.critical(self, "Error al simular", f"Ocurrió un error:\n{exc}")
         finally:
             self.run_button.setEnabled(True)

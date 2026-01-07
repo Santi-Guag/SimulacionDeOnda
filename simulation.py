@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 
 import sounddevice as sd
-import soundfile as sf  # obligatorio para PyInstaller
+import soundfile as sf  
 
 from modelo import String
 from modal import (
@@ -37,7 +37,6 @@ def create_initial_condition(kind, x, L, d0, custom_equation=None):
             raise ValueError("Se requiere una ecuación personalizada")
         
         try:
-            # Crear namespace seguro con funciones matemáticas disponibles
             namespace = {
                 'x': x,
                 'L': L,
@@ -57,29 +56,24 @@ def create_initial_condition(kind, x, L, d0, custom_equation=None):
                 'tanh': np.tanh,
             }
             
-            # Evaluar la ecuación personalizada
             y = eval(custom_equation, {"__builtins__": {}}, namespace)
             
-            # Validar que sea array o número
             if isinstance(y, (int, float)):
                 raise ValueError("La ecuación debe devolver un array o valores para cada x")
             
             y = np.asarray(y)
             
-            # Validar dimensiones
             if y.shape != x.shape:
                 raise ValueError(f"La ecuación generó un array de tamaño {y.shape[0]}, se esperaba {x.shape[0]}")
             
-            # Validar que sea numérico
             if not np.issubdtype(y.dtype, np.number):
                 raise ValueError("La ecuación debe devolver valores numéricos")
             
-            # Validar que no haya NaN o Inf
             if np.any(np.isnan(y)) or np.any(np.isinf(y)):
                 raise ValueError("La ecuación produjo valores NaN o infinito")
             
-            x0_audio = 0.5 * L  # Default para ecuaciones personalizadas
-            
+            x0_audio = 0.5 * L  
+
         except SyntaxError as e:
             raise ValueError(f"Error de sintaxis en la ecuación: {e}")
         except NameError as e:
@@ -127,13 +121,12 @@ def run_simulation(
         B, L, c, audio_duration, fs, x0=x0_audio, alpha=alpha
     ).astype(np.float32)
 
-    # Reproducir audio mediante un stream para evitar cortes (mantener referencia)
     sd.default.samplerate = fs
     sd.default.channels = 1
 
     play_idx = {"i": 0}
 
-    # Callback que reproduce el buffer una sola vez
+   
     def audio_callback(outdata, frames, time_info, status):
         if status:
             print(status)
@@ -174,28 +167,23 @@ def run_simulation(
         line.set_ydata(string.y[1:-1])
         return line,
 
-    # Guardar la animación en una variable para evitar que el GC la destruya
     anim = FuncAnimation(
         fig,
         update,
         interval=1000 / fps,
         blit=False,
-        cache_frame_data=False  # evitar warning de cache y uso de memoria
+        cache_frame_data=False  
     )
 
-    # Asociar la animación y el stream de audio a la figura para garantizar su ciclo de vida
     fig._anim = anim
     fig._audio_stream = audio_stream
 
-    # Mostrar sin lanzar un nuevo bucle de eventos de Qt (ya está corriendo)
     plt.show(block=False)
 
-    # Mantener la ventana y el audio hasta que se cierre la figura
     while plt.fignum_exists(fig.number):
         plt.pause(0.05)
         if not audio_stream.active:
             break
 
-    # Si el stream sigue activo al cerrar la ventana, detenerlo
     if audio_stream.active:
         audio_stream.stop()
